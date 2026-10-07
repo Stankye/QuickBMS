@@ -4,6 +4,8 @@
 
 #if LZHAM_USE_WIN32_API
 
+#include <stdint.h>
+
 #if LZHAM_NO_ATOMICS
 #error No atomic operations defined in lzham_platform.h!
 #endif
