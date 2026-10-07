@@ -100,7 +100,7 @@ To export the binaries without the runtime image:
 docker build --platform linux/amd64 --target binaries --output dist .
 ```
 
-Exported binaries require the 32-bit glibc and OpenSSL 3 runtime libraries;
+Exported binaries require the 32-bit glibc, libstdc++, and OpenSSL 3 runtime libraries;
 the container supplies these dependencies. These are not static executables.
 The upstream Makefile still disables the optional mcrypt and tomcrypt backends.
 The export and image also include `quickbms-source.tar.gz`, containing the
@@ -116,8 +116,10 @@ spaces, and unchanged input. The same checks run inside the final image without
 network access. They are smoke tests, not coverage of every bundled codec or
 game script.
 
-Successful runs upload both executables, checksums, and
-`quickbms-container.tar.gz` as a GitHub Actions artifact, retained for 14 days.
+Successful runs upload `quickbms-linux-x86.tar.gz` (both executables, source,
+and notices), checksums, and `quickbms-container.tar.gz` as a GitHub Actions
+artifact, retained for 14 days. Extract the native bundle with
+`tar -xzf quickbms-linux-x86.tar.gz` to retain executable permissions.
 Load the downloaded image with `docker load -i quickbms-container.tar.gz`; its
 image name is `quickbms:ci`. No container registry publication is configured.
 

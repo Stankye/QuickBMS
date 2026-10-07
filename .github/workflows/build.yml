@@ -2,7 +2,7 @@ name: Linux container build
 
 on:
   push:
-    branches: [main, 'codex/**']
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -26,21 +26,25 @@ jobs:
         run: |
           docker run --rm --network none quickbms:ci --version
           docker run --rm --network none --entrypoint quickbms_4gb_files quickbms:ci --version
-          mkdir -p dist
+          mkdir -p dist/native
           container_id=$(docker create quickbms:ci)
           trap 'docker rm -f "$container_id" >/dev/null' EXIT
-          docker cp "$container_id:/usr/local/bin/quickbms" dist/quickbms
-          docker cp "$container_id:/usr/local/bin/quickbms_4gb_files" dist/quickbms_4gb_files
-          docker cp "$container_id:/usr/share/doc/quickbms/quickbms-source.tar.gz" dist/quickbms-source.tar.gz
+          docker cp "$container_id:/usr/local/bin/quickbms" dist/native/quickbms
+          docker cp "$container_id:/usr/local/bin/quickbms_4gb_files" dist/native/quickbms_4gb_files
+          docker cp "$container_id:/usr/share/doc/quickbms/quickbms-source.tar.gz" dist/native/quickbms-source.tar.gz
           # Exercise extraction with the minimal runtime libraries, as a non-root user.
           python3 tests/smoke.py quickbms --docker-image quickbms:ci
           python3 tests/smoke.py quickbms_4gb_files --docker-image quickbms:ci
           docker save quickbms:ci | gzip > dist/quickbms-container.tar.gz
-          cp LICENSE README.md dist/
-          (cd dist && sha256sum quickbms quickbms_4gb_files quickbms-source.tar.gz quickbms-container.tar.gz > SHA256SUMS)
+          cp LICENSE README.md dist/native/
+          (cd dist/native && sha256sum quickbms quickbms_4gb_files quickbms-source.tar.gz > SHA256SUMS)
+          tar -C dist/native -czf dist/quickbms-linux-x86.tar.gz .
+          (cd dist && sha256sum quickbms-linux-x86.tar.gz quickbms-container.tar.gz > SHA256SUMS)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: quickbms-linux-x86-${{ github.sha }}
-          path: dist/
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 14

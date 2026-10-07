@@ -27,7 +27,8 @@ RUN make -C src EXE=quickbms_4gb_files CC="gcc -DQUICKBMS64" \
 # Include corresponding source and all original notices with binary distributions.
 FROM build-base AS source-archive
 COPY Dockerfile LICENSE README.md ./
-RUN tar -czf /quickbms-source.tar.gz src tests Dockerfile LICENSE README.md
+COPY scripts/ scripts/
+RUN tar -czf /quickbms-source.tar.gz src scripts tests Dockerfile LICENSE README.md
 
 # Export just the tested Linux binaries: docker build --target binaries --output dist .
 FROM scratch AS binaries
@@ -38,7 +39,8 @@ COPY --from=source-archive /quickbms-source.tar.gz /quickbms-source.tar.gz
 FROM debian:bookworm-slim AS runtime
 RUN dpkg --add-architecture i386 \
     && apt-get update \
-    && apt-get install -y --no-install-recommends libc6:i386 libssl3:i386 ca-certificates \
+    && apt-get install -y --no-install-recommends \
+       libc6:i386 libstdc++6:i386 libssl3:i386 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=standard /build/src/quickbms /usr/local/bin/quickbms
 COPY --from=large-files /build/src/quickbms_4gb_files /usr/local/bin/quickbms_4gb_files
