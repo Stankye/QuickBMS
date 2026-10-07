@@ -515,7 +515,7 @@ const byte *Kraken_ParseQuantumHeader(KrakenQuantumHeader *hdr, const byte *p, b
 }
 
 const byte *LZNA_ParseWholeMatchInfo(const byte *p, uint32 *dist) {
-  uint32 v = _byteswap_ushort(*(uint16*)p);
+  uint32 v = powzix_byteswap16(*(uint16*)p);
 
   if (v < 0x8000) {
     uint32 x = 0, b, pos = 0;
@@ -649,7 +649,7 @@ bool Kraken_DecodeBytesCore(HuffReader *hr, HuffRevLut *lut) {
       src_bits |= *(uint32*)src << src_bitpos;
       src += (31 - src_bitpos) >> 3;
 
-      src_end_bits |= _byteswap_ulong(*(uint32*)src_end) << src_end_bitpos;
+      src_end_bits |= powzix_byteswap32(*(uint32*)src_end) << src_end_bitpos;
       src_end -= (31 - src_end_bitpos) >> 3;
 
       src_mid_bits |= *(uint32*)src_mid << src_mid_bitpos;
@@ -970,25 +970,25 @@ bool DecodeGolombRiceBits(uint8 *dst, uint size, uint bitcount, BitReader2 *br) 
     assert(bitcount == 1);
     do {
       // Read the next byte
-      uint64 bits = (uint8)(_byteswap_ulong(*(uint32*)p) >> (24 - bitpos));
+      uint64 bits = (uint8)(powzix_byteswap32(*(uint32*)p) >> (24 - bitpos));
       p += 1;
       // Expand each bit into each byte of the uint64.
       bits = (bits | (bits << 28)) & 0xF0000000Full;
       bits = (bits | (bits << 14)) & 0x3000300030003ull;
       bits = (bits | (bits <<  7)) & 0x0101010101010101ull;
-      *(uint64*)dst = *(uint64*)dst * 2 + _byteswap_uint64(bits);
+      *(uint64*)dst = *(uint64*)dst * 2 + powzix_byteswap64(bits);
       dst += 8;
     } while (dst < dst_end);
   } else if (bitcount == 2) {
     do {
       // Read the next 2 bytes
-      uint64 bits = (uint16)(_byteswap_ulong(*(uint32*)p) >> (16 - bitpos));
+      uint64 bits = (uint16)(powzix_byteswap32(*(uint32*)p) >> (16 - bitpos));
       p += 2;
       // Expand each bit into each byte of the uint64.
       bits = (bits | (bits << 24)) & 0xFF000000FFull;
       bits = (bits | (bits << 12)) & 0xF000F000F000Full;
       bits = (bits | (bits << 6)) & 0x0303030303030303ull;
-      *(uint64*)dst = *(uint64*)dst * 4 + _byteswap_uint64(bits);
+      *(uint64*)dst = *(uint64*)dst * 4 + powzix_byteswap64(bits);
       dst += 8;
     } while (dst < dst_end);
 
@@ -996,13 +996,13 @@ bool DecodeGolombRiceBits(uint8 *dst, uint size, uint bitcount, BitReader2 *br) 
     assert(bitcount == 3);
     do {
       // Read the next 3 bytes
-      uint64 bits = (_byteswap_ulong(*(uint32*)p) >> (8 - bitpos)) & 0xffffff;
+      uint64 bits = (powzix_byteswap32(*(uint32*)p) >> (8 - bitpos)) & 0xffffff;
       p += 3;
       // Expand each bit into each byte of the uint64.
       bits = (bits | (bits << 20)) & 0xFFF00000FFFull;
       bits = (bits | (bits << 10)) & 0x3F003F003F003Full;
       bits = (bits | (bits << 5)) & 0x0707070707070707ull;
-      *(uint64*)dst = *(uint64*)dst * 8 + _byteswap_uint64(bits);
+      *(uint64*)dst = *(uint64*)dst * 8 + powzix_byteswap64(bits);
       dst += 8;
     } while (dst < dst_end);
   }
@@ -1449,7 +1449,7 @@ int Kraken_DecodeMultiArray(const uint8 *src, const uint8 *src_end,
 
   int i;
   for (i = 0; i + 2 <= num_lens; i += 2) {
-    bits_f |= _byteswap_ulong(*(uint32*)f) >> (24 - bitpos_f);
+    bits_f |= powzix_byteswap32(*(uint32*)f) >> (24 - bitpos_f);
     f += (bitpos_f + 7) >> 3;
 
     bits_b |= ((uint32*)b)[-1] >> (24 - bitpos_b);
@@ -1476,7 +1476,7 @@ int Kraken_DecodeMultiArray(const uint8 *src, const uint8 *src_end,
 
   // read final one since above loop reads 2
   if (i < num_lens) {
-    bits_f |= _byteswap_ulong(*(uint32*)f) >> (24 - bitpos_f);
+    bits_f |= powzix_byteswap32(*(uint32*)f) >> (24 - bitpos_f);
     int numbits_f = interval_lenlog2[i];
     bits_f = kraken_rotl(bits_f | 1, numbits_f);
     int value_f = bits_f & bitmasks[numbits_f];
@@ -1937,7 +1937,7 @@ bool Tans_Decode(TansDecoderParams *params) {
       break;
 
 #define TANS_BACKWARD_BITS()                    \
-    bits_b |= _byteswap_ulong(((uint32 *)ptr_b)[-1]) << bitpos_b;     \
+    bits_b |= powzix_byteswap32(((uint32 *)ptr_b)[-1]) << bitpos_b;     \
     ptr_b -= (31 - bitpos_b) >> 3;              \
     bitpos_b |= 24;
 
@@ -2030,7 +2030,7 @@ int Krak_DecodeTans(const byte *src, size_t src_size, byte *dst, int dst_size, u
   uint32 L_mask = (1 << L_bits) - 1;
   uint32 bits_f = *(uint32*)src;
   src += 4;
-  uint32 bits_b = _byteswap_ulong(*(uint32*)(src_end - 4));
+  uint32 bits_b = powzix_byteswap32(*(uint32*)(src_end - 4));
   src_end -= 4;
   uint32 bitpos_f = 32, bitpos_b = 32;
 

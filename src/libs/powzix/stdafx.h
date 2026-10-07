@@ -26,16 +26,16 @@
 #include <math.h>
 #define __forceinline
 
-    static inline uint16_t _byteswap_ushort(uint16_t x) {
+    static inline uint16_t powzix_byteswap16(uint16_t x) {
 		return ((( x  >> 8 ) & 0xffu ) | (( x  & 0xffu ) << 8 ));
 	}
-    static inline uint32_t _byteswap_ulong(uint32_t x) {
+    static inline uint32_t powzix_byteswap32(uint32_t x) {
         return ((( x & 0xff000000u ) >> 24 ) |
                 (( x & 0x00ff0000u ) >> 8  ) |
                 (( x & 0x0000ff00u ) << 8  ) |
                 (( x & 0x000000ffu ) << 24 ));
     }
-    static inline uint64_t _byteswap_uint64(uint64_t x) {
+    static inline uint64_t powzix_byteswap64(uint64_t x) {
         return ((( x & 0xff00000000000000ull ) >> 56 ) |
                 (( x & 0x00ff000000000000ull ) >> 40 ) |
                 (( x & 0x0000ff0000000000ull ) >> 24 ) |

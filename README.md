@@ -127,7 +127,9 @@ bash tools/build-windows.sh
 Outputs go to `dist/windows/`. The helper uses the existing Makefile's source
 list through a GCC response file to avoid Windows command-line length limits.
 It links the compiler runtimes and OpenSSL statically and preserves the original
-Windows resources.
+Windows resources. As with the upstream build, some assembly codecs use archived
+objects/libraries; the Windows Zen decoder links the saved `ZenLib.obj`, whose
+MASM source is included under `src/libs/zenlib/`.
 
 The saved source does not include Microsoft's XMem SDK library. These Windows
 builds therefore use the bundled LZX decoder; **XMem compression and segmented

@@ -14,13 +14,18 @@ fi
 cd "$(dirname "$0")/../src"
 mkdir -p ../dist/windows
 windres -I res res/quickbms.rc -O coff -o ../dist/windows/quickbms-res.o
+# The archived MASM object carries obsolete library/DLL-entry directives. Its
+# decoder uses a plain cdecl return despite the original stdcall decoration.
+objcopy --remove-section .drectve \
+    --redefine-sym '_zen_decompress@0=_zen_decompress' \
+    libs/zenlib/ZenLib.obj ../dist/windows/ZenLib.obj
 
 # Preserve the old source's C/C++ dialects under current GCC. -fpermissive retains
 # legacy implicit conversions that GCC 14+ otherwise treats as hard errors.
 cflags='-m32 -s -O2 -msse2 -std=gnu17 -std=gnu++17 -fpermissive -fstack-protector-all -fno-unit-at-a-time -fno-omit-frame-pointer -w'
 # Override the Makefile's portable LZHAM define so Windows uses its own allocator.
 cdefs='-DDISABLE_MCRYPT -DDISABLE_TOMCRYPT -DDISABLE_XMEM -DZSTD_DISABLE_ASM -ULZHAM_ANSI_CPLUSPLUS'
-extras='libs/amiga/amiga.s libs/powzix/*.cpp extra/MemoryModule.c libs/libdeflate/lib/*.c libs/libdeflate/lib/x86/cpu_features.c ../dist/windows/quickbms-res.o'
+extras='libs/amiga/amiga.s libs/powzix/*.cpp ../dist/windows/ZenLib.obj extra/MemoryModule.c libs/libdeflate/lib/*.c libs/libdeflate/lib/x86/cpu_features.c ../dist/windows/quickbms-res.o'
 libraries="-static -lstdc++ -lm -lpthread $(pkg-config --static --libs openssl) -lws2_32 -lwinmm -lcomdlg32 -lgdi32 -ladvapi32 -lshell32 -lcrypt32 -lbcrypt"
 
 build_variant() {
