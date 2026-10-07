@@ -53,8 +53,7 @@ endif
 # - > brew install gcc
 # - > brew install openssl
 
-all:
-	$(CC) $(SRC) $(CFLAGS) -o $(EXE) \
+BUILD_ARGS = $(SRC) $(CFLAGS) -o $(EXE) \
 	\
 	-D_7ZIP_ST -DE_INVALIDARG=-1 \
 	\
@@ -64,6 +63,14 @@ all:
 	\
 	$(CLIBS) $(CDEFS)
 
+all:
+	$(CC) $(BUILD_ARGS)
+
+# A shell builtin expands the source globs without Windows' process argument limit.
+# The Windows build helper feeds this output to GCC as a response file.
+print-args:
+	@printf '%s\n' $(BUILD_ARGS)
+
 install:
 	install -m 755 -d $(BINDIR)
 	install -m 755 $(EXE) $(BINDIR)/$(EXE)
@@ -71,5 +78,4 @@ install:
 clean:
 	rm -f quickbms
 
-.PHONY:
-	install clean
+.PHONY: all print-args install clean

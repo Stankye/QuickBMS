@@ -1,4 +1,4 @@
-name: Linux container build
+name: Build and test
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Build container and test both binaries
         run: docker build --platform linux/amd64 --progress plain -t quickbms:ci .
       - name: Test the runtime image
@@ -40,11 +40,70 @@ jobs:
           (cd dist/native && sha256sum quickbms quickbms_4gb_files quickbms-source.tar.gz > SHA256SUMS)
           tar -C dist/native -czf dist/quickbms-linux-x86.tar.gz .
           (cd dist && sha256sum quickbms-linux-x86.tar.gz quickbms-container.tar.gz > SHA256SUMS)
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: quickbms-linux-x86-${{ github.sha }}
           path: |
             dist/*.tar.gz
             dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: >-
+            make
+            mingw-w64-i686-gcc
+            mingw-w64-i686-openssl
+            mingw-w64-i686-pkgconf
+      - name: Build native Windows executables
+        shell: msys2 {0}
+        run: |
+          bash tools/build-windows.sh
+          mkdir -p dist/windows/licenses
+          cp -R /mingw32/share/licenses/openssl dist/windows/licenses/
+          pacman -Q > dist/windows/toolchain.txt
+      - name: Test outside the build environment
+        shell: pwsh
+        run: |
+          # No MSYS2/MinGW DLL directories: test the standalone executables.
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notmatch 'msys|mingw' }) -join ';'
+          foreach ($name in @('quickbms', 'quickbms_4gb_files')) {
+            & "./dist/windows/$name.exe" --version
+            if ($LASTEXITCODE -ne 0) { throw "$name version check failed" }
+            python tests/smoke.py "dist/windows/$name.exe"
+            if ($LASTEXITCODE -ne 0) { throw "$name smoke tests failed" }
+          }
+      - name: Package Windows download
+        shell: pwsh
+        run: |
+          $package = 'dist/windows-package'
+          New-Item -ItemType Directory -Path $package -Force | Out-Null
+          Copy-Item dist/windows/*.exe $package
+          Copy-Item dist/windows/toolchain.txt $package
+          Copy-Item dist/windows/licenses $package -Recurse
+          Copy-Item scripts $package -Recurse
+          Copy-Item LICENSE,README.md $package
+          git archive --format=tar.gz --output="$package/quickbms-source.tar.gz" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          Get-ChildItem $package -File | Where-Object { $_.Extension -eq '.exe' -or $_.Name -eq 'quickbms-source.tar.gz' } | ForEach-Object {
+            '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
+          } | Set-Content "$package/SHA256SUMS" -Encoding ascii
+          Compress-Archive -Path "$package/*" -DestinationPath dist/quickbms-windows-x86.zip
+          '{0}  quickbms-windows-x86.zip' -f (Get-FileHash dist/quickbms-windows-x86.zip -Algorithm SHA256).Hash.ToLowerInvariant() |
+            Set-Content dist/WINDOWS-SHA256SUMS -Encoding ascii
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: quickbms-windows-x86-${{ github.sha }}
+          path: |
+            dist/quickbms-windows-x86.zip
+            dist/WINDOWS-SHA256SUMS
           if-no-files-found: error
           retention-days: 14

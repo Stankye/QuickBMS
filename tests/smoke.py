@@ -24,12 +24,18 @@ endian little
 get RAW_SIZE long
 get PACKED_SIZE long
 get UNPACKED_SIZE long
+get XMEM_PACKED_SIZE long
+get XMEM_UNPACKED_SIZE long
 savepos RAW_OFFSET
 log "raw payload.bin" RAW_OFFSET RAW_SIZE
 math PACKED_OFFSET = RAW_OFFSET
 math PACKED_OFFSET += RAW_SIZE
 comtype zlib
 clog "compressed payload.bin" PACKED_OFFSET PACKED_SIZE UNPACKED_SIZE
+math XMEM_OFFSET = PACKED_OFFSET
+math XMEM_OFFSET += PACKED_SIZE
+comtype XMemDecompress
+clog "xmem payload.bin" XMEM_OFFSET XMEM_PACKED_SIZE XMEM_UNPACKED_SIZE
 """
 
 
@@ -112,11 +118,27 @@ def smoke(executable, timeout, docker_image=None):
     raw = bytes(range(256)) * 4 + b"\x00Raw payload\r\n\xff"
     unpacked = b"QuickBMS zlib smoke fixture\x00\r\n" * 128 + bytes(range(255, -1, -1))
     packed = zlib.compress(unpacked)
-    archive_bytes = (
-        b"QBSM" + struct.pack("<III", len(raw), len(packed), len(unpacked))
-        + raw + packed
+    xmem_unpacked = bytes(range(32))
+    # LZX stores bits in little-endian 16-bit words, most significant bit first:
+    # no Intel transform (1 bit), uncompressed block (3), length (24), padding.
+    lzx_header = (3 << 28) | (len(xmem_unpacked) << 4)
+    lzx_block = (
+        struct.pack("<HHIII", lzx_header >> 16, lzx_header & 0xFFFF, 1, 1, 1)
+        + xmem_unpacked
     )
-    expected = {"raw payload.bin": raw, "compressed payload.bin": unpacked}
+    # Xbox framing: marker, big-endian uncompressed and compressed block sizes.
+    xmem_packed = b"\xff" + struct.pack(">HH", len(xmem_unpacked), len(lzx_block)) + lzx_block
+    archive_bytes = (
+        b"QBSM" + struct.pack(
+            "<IIIII", len(raw), len(packed), len(unpacked),
+            len(xmem_packed), len(xmem_unpacked),
+        ) + raw + packed + xmem_packed
+    )
+    expected = {
+        "raw payload.bin": raw,
+        "compressed payload.bin": unpacked,
+        "xmem payload.bin": xmem_unpacked,
+    }
 
     # Spaces exercise argument passing as well as archive/output path handling.
     with tempfile.TemporaryDirectory(prefix="quickbms smoke ") as temporary:
@@ -155,7 +177,7 @@ def smoke(executable, timeout, docker_image=None):
             raise RuntimeError("Reading/listing the archive changed its contents")
 
     target = f"{executable.name} in {docker_image}" if docker_image else executable.name
-    print(f"PASS: {target}: list-only, Log, zlib CLog, unchanged input")
+    print(f"PASS: {target}: list-only, Log, zlib/XMem LZX CLog, unchanged input")
 
 
 def main():

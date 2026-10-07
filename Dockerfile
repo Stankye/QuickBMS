@@ -28,7 +28,8 @@ RUN make -C src EXE=quickbms_4gb_files CC="gcc -DQUICKBMS64" \
 FROM build-base AS source-archive
 COPY Dockerfile LICENSE README.md ./
 COPY scripts/ scripts/
-RUN tar -czf /quickbms-source.tar.gz src scripts tests Dockerfile LICENSE README.md
+COPY tools/ tools/
+RUN tar -czf /quickbms-source.tar.gz src scripts tests tools Dockerfile LICENSE README.md
 
 # Export just the tested Linux binaries: docker build --target binaries --output dist .
 FROM scratch AS binaries

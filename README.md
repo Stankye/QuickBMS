@@ -79,7 +79,8 @@ docker run --rm --entrypoint quickbms_4gb_files quickbms:local --version
 
 Both executables are **32-bit x86 Linux binaries**. `quickbms_4gb_files` enables
 `QUICKBMS64` for wider script integers/file offsets; it is not a native 64-bit
-port. Native ARM and Windows builds are not covered by this setup.
+port. Native ARM builds are not covered by this setup. Windows binaries are
+built separately as described below.
 
 The image includes the saved scripts in `/opt/quickbms/scripts`. Mount a working
 folder at `/data`, then select the script, input, and output paths, for example:
@@ -107,13 +108,40 @@ The export and image also include `quickbms-source.tar.gz`, containing the
 corresponding source and original license notices. In the image it is under
 `/usr/share/doc/quickbms/`.
 
+## Native Windows binaries
+
+The Windows Actions job builds `quickbms.exe` and `quickbms_4gb_files.exe` from
+source with MSYS2's MINGW32 toolchain. Both are 32-bit Windows executables; they
+also run on x64 Windows. The download `quickbms-windows-x86.zip` contains both
+executables, the script collection, checksums, source, and license notices.
+Extract the ZIP before running either executable. No MSYS2 installation is
+needed to use the downloaded binaries.
+
+To reproduce the build, install MSYS2 and open its **MINGW32** shell:
+
+```sh
+pacman -S --needed make mingw-w64-i686-gcc mingw-w64-i686-openssl mingw-w64-i686-pkgconf
+bash tools/build-windows.sh
+```
+
+Outputs go to `dist/windows/`. The helper uses the existing Makefile's source
+list through a GCC response file to avoid Windows command-line length limits.
+It links the compiler runtimes and OpenSSL statically and preserves the original
+Windows resources.
+
+The saved source does not include Microsoft's XMem SDK library. These Windows
+builds therefore use the bundled LZX decoder; **XMem compression and segmented
+LZX/TD decoding are unavailable**. Optional mcrypt and tomcrypt backends remain
+disabled, as in the Linux build. These binaries are not signed.
+
 ## Automated builds and checks
 
-[`Linux container build`](.github/workflows/build.yml) builds both variants and
-the runtime image on pushes and pull requests. Generated fixtures exercise
-list-only mode, byte-exact `Log` extraction, zlib `CLog` decompression, paths with
+[`Build and test`](.github/workflows/build.yml) builds both variants for Linux
+and Windows, plus the Linux runtime image, on pushes and pull requests. Generated fixtures exercise
+list-only mode, byte-exact `Log` extraction, zlib and LZX `CLog` decompression, paths with
 spaces, and unchanged input. The same checks run inside the final image without
-network access. They are smoke tests, not coverage of every bundled codec or
+network access. Windows tests run outside the MSYS2 shell with its DLL paths
+removed. They are smoke tests, not coverage of every bundled codec or
 game script.
 
 Successful runs upload `quickbms-linux-x86.tar.gz` (both executables, source,

@@ -6,6 +6,8 @@
 !scripts/**
 !tests/
 !tests/smoke.py
+!tools/
+!tools/**
 !LICENSE
 !README.md
 src/quickbms
