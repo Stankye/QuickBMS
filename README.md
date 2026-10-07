@@ -1,8 +1,12 @@
-# QuickBMS preservation archive
+# QuickBMS
 
 This repository preserves **QuickBMS 0.12.0** by Luigi Auriemma and a saved
 collection of **2,745 QuickBMS scripts**. QuickBMS is a script-driven tool for
 extracting and working with game archives and other binary formats.
+
+The untouched import is tagged [`v0.12.0`](https://github.com/Stankye/QuickBMS/tree/v0.12.0).
+Subsequent commits add build support and provide a starting point for this
+fork's 0.13 work; they are not a new upstream release.
 
 ## Why this copy exists
 
@@ -29,7 +33,7 @@ contain the latest release or every script ever published.
 | [`scripts/`](scripts/) | 2,745 `.bms` files from the saved script collection. |
 | [`LICENSE`](LICENSE) | The repository's existing GNU GPL version 2 license text. |
 
-The imported files retain their original bytes. Source archive paths are kept
+At `v0.12.0`, the imported files retain their original bytes. Source archive paths are kept
 under `src/`; the flat script collection is placed under `scripts/`. Git does
 not track the source ZIP's empty directory entries. The ZIP containers themselves
 are not duplicated in the repository.
@@ -61,10 +65,84 @@ archive format, the input archive, and an output directory. Typical usage is:
 quickbms scripts/<matching-script>.bms <input-archive> <output-directory>
 ```
 
-The source archive includes the upstream [`src/Makefile`](src/Makefile). Its
-default configuration targets a 32-bit build and requires the corresponding
-compiler and libraries. This import has been checked for file integrity; it has
-not been built, and the scripts have not been functionally tested.
+## Build and run with Docker
+
+The [`Dockerfile`](Dockerfile) builds from the checked-in source using Debian
+bookworm, GCC 12, and 32-bit OpenSSL 3 libraries. It does not download QuickBMS
+from the unavailable site. Use a Linux Docker engine on an x86-64 host:
+
+```sh
+docker build --platform linux/amd64 -t quickbms:local .
+docker run --rm quickbms:local --version
+docker run --rm --entrypoint quickbms_4gb_files quickbms:local --version
+```
+
+Both executables are **32-bit x86 Linux binaries**. `quickbms_4gb_files` enables
+`QUICKBMS64` for wider script integers/file offsets; it is not a native 64-bit
+port. Native ARM and Windows builds are not covered by this setup.
+
+The image includes the saved scripts in `/opt/quickbms/scripts`. Mount a working
+folder at `/data`, then select the script, input, and output paths, for example:
+
+```sh
+docker run --rm --network none --mount "type=bind,src=$(pwd),dst=/data" \
+  quickbms:local /opt/quickbms/scripts/zip.bms /data/input.zip /data/output
+```
+
+In PowerShell, replace `$(pwd)` with `${PWD}` and put the command on one line.
+On Linux, add `--user "$(id -u):$(id -g)"` before the image name to create output
+with your own user ID. Mount a folder containing your input, rather than the
+whole source checkout.
+
+To export the binaries without the runtime image:
+
+```sh
+docker build --platform linux/amd64 --target binaries --output dist .
+```
+
+Exported binaries require the 32-bit glibc and OpenSSL 3 runtime libraries;
+the container supplies these dependencies. These are not static executables.
+The upstream Makefile still disables the optional mcrypt and tomcrypt backends.
+The export and image also include `quickbms-source.tar.gz`, containing the
+corresponding source and original license notices. In the image it is under
+`/usr/share/doc/quickbms/`.
+
+## Automated builds and checks
+
+[`Linux container build`](.github/workflows/build.yml) builds both variants and
+the runtime image on pushes and pull requests. Generated fixtures exercise
+list-only mode, byte-exact `Log` extraction, zlib `CLog` decompression, paths with
+spaces, and unchanged input. The same checks run inside the final image without
+network access. They are smoke tests, not coverage of every bundled codec or
+game script.
+
+Successful runs upload both executables, checksums, and
+`quickbms-container.tar.gz` as a GitHub Actions artifact, retained for 14 days.
+Load the downloaded image with `docker load -i quickbms-container.tar.gz`; its
+image name is `quickbms:ci`. No container registry publication is configured.
+
+## Build research and compatibility changes
+
+Existing work provides useful starting points:
+
+- [9001/lxc's source-built container](https://github.com/9001/lxc/blob/hovudstraum/static-quickbms/Dockerfile)
+  demonstrates a 32-bit build, but is marked unmaintained and fetches the upstream
+  ZIP. This setup builds the preserved source instead.
+- [Canar's modern GCC fork](https://github.com/Canar/quickbms) and the
+  [upstream Linux build discussion](https://github.com/LittleBigBug/QuickBMS/issues/5)
+  identify missing x86 sources and toolchain compatibility problems.
+- [wilson0x4d's fork](https://github.com/wilson0x4d/quickbms) has a parallel
+  LLVM-based 64-bit build, with different compatibility tradeoffs.
+
+This build adds the missing LZMA CPU detection source and enables the existing
+Amiga/Kraken x86 sources when building on x86-64. It separates the input source
+filename from the output name for the two executable variants. With OpenSSL 3,
+the removed SSLv23 RSA padding attempt is skipped; the remaining attempts keep
+their original order. Headers that still define it retain the original attempt.
+
+Small follow-ups for 0.13 are reliable Makefile install/clean targets, graceful
+handling of malformed update pages, and regressions for reported script-string
+matching bugs. The binary version remains 0.12.0 until release work begins.
 
 ## Credits and licensing
 
