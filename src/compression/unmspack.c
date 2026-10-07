@@ -270,6 +270,8 @@ static struct mspack_system lzxSys =
 /*static*/ int appDecompressLZX(byte *CompressedBuffer, int CompressedSize, byte *UncompressedBuffer, int UncompressedSize, int WindowSize, int CompressionPartitionSize)
 {
 	//guard(appDecompressLZX);
+	// The final LZX frame requires a known, non-negative output length.
+	if (UncompressedSize < 0) return -1;
 
 	// setup streams
 	struct appDecompressLZX_file src, dst;

@@ -1125,7 +1125,7 @@ int unbzip2_file(u8 *in, int insz, u8 **ret_out, int *ret_outsz) { // no reset i
 
 u32 swap32be(u32 n);
 u32 swap32le(u32 n);
-int unxmemlzx(u8 *in, int insz, u8 **ret_out, int *ret_outsz) {
+int unxmemlzx(u8 *in, int insz, u8 **ret_out, int outsz, int *ret_outsz) {
     typedef VOID*                       XMEMDECOMPRESSION_CONTEXT;
     typedef enum _XMEMCODEC_TYPE {
         XMEMCODEC_DEFAULT =             0,
@@ -1394,7 +1394,8 @@ int unxmemlzx(u8 *in, int insz, u8 **ret_out, int *ret_outsz) {
 #if defined(WIN32) && !defined(DISABLE_XMEM)
     hr = XMemDecompress(ctx, *ret_out, &ret, in, insz + MYALLOC_ZEROES); // + MYALLOC_ZEROES: ehmmmm long story, watch myalloc() and DMC4
 #else
-    ret = appDecompressLZX(                  in, insz + MYALLOC_ZEROES, *ret_out, ret, param.WindowSize, param.CompressionPartitionSize);
+    // LZX needs the requested output length, not the reusable buffer capacity.
+    ret = appDecompressLZX(                  in, insz + MYALLOC_ZEROES, *ret_out, outsz, param.WindowSize, param.CompressionPartitionSize);
     hr = (ret < 0) ? -1 : S_OK;
 #endif
     if(hr != S_OK) { ret = -1; goto quit; }
@@ -3563,7 +3564,7 @@ int slz_triace(unsigned char *in, int insz, unsigned char **ret_out, int outsz, 
     u8      *raw = out,
             *raw_end = out + outsz;
 
-    if(mode == 4) return unxmemlzx(in, insz, ret_out, ret_outsz);
+    if(mode == 4) return unxmemlzx(in, insz, ret_out, outsz, ret_outsz);
     if(mode == 5) return unzip_dynamic(in, insz, ret_out, ret_outsz, 0);
 
     if (!mode) {
@@ -10747,7 +10748,7 @@ int ungzip(u8 *in, int insz, u8 **ret_out, int *ret_outsz, int strict) {
         case 9:  fsize = inflate64(in, inl - in, out, fsize);               break;
         case 12: fsize = unbzip2(in, inl - in, out, fsize);                 break;
         case 14: fsize = unlzma(in, inl - in, &out, fsize, LZMA_FLAGS_EFS, &fsize, 0); break;
-        case 21: fsize = unxmemlzx(in, inl - in, &out, ret_outsz);          break;
+        case 21: fsize = unxmemlzx(in, inl - in, &out, fsize, ret_outsz);          break;
         case 64: fsize = undarksector(in, inl - in, out, fsize, 1);         break;
         case 98: fsize = ppmdi_decompress /*unppmdi*/ (in, inl - in, out, fsize); break;
         default: fsize = unzip_dynamic(in, inl - in, &out, ret_outsz, 0);   break;

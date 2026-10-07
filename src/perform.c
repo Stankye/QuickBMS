@@ -1741,7 +1741,7 @@ int perform_compression(u8 *in, int zsize, u8 **ret_out, int size, int *outsize,
         QUICK_COMP_CASE(LZMA_86DECHEAD0) QUICK_COMP_CASE_LZMA_DOIT(,LZMA_FLAGS_PROP0 | LZMA_FLAGS_86_DECODER | LZMA_FLAGS_86_HEADER,0)  // contains the uncompressed size
         QUICK_COMP_CASE(LZMA_EFS0)       QUICK_COMP_CASE_LZMA_DOIT(,LZMA_FLAGS_PROP0 | LZMA_FLAGS_EFS,0)
         QUICK_COMP_CASE(BZIP2) size = unbzip2(in, zsize, out, size);
-        QUICK_COMP_CASE(XMEMLZX) t32 = *outsize; size = unxmemlzx(in, zsize, &out, &t32); *outsize = t32;
+        QUICK_COMP_CASE(XMEMLZX) t32 = *outsize; size = unxmemlzx(in, zsize, &out, size, &t32); *outsize = t32;
         QUICK_COMP_CASE(HEX) size = unhex(in, zsize, out, size);
         QUICK_COMP_CASE(BASE64) size = unbase64(in, zsize, out, size);
         QUICK_COMP_CASE(UUENCODE) size = uudecode(in, zsize, out, size, 0);
