@@ -1,0 +1,15 @@
+**
+!Dockerfile
+!src/
+!src/**
+!scripts/
+!scripts/**
+!tests/
+!tests/smoke.py
+!tools/
+!tools/**
+!LICENSE
+!README.md
+src/quickbms
+src/quickbms_4gb_files
+**/__pycache__

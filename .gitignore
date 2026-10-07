@@ -1,0 +1,5 @@
+/dist/
+/build-logs/
+/src/quickbms
+/src/quickbms_4gb_files
+__pycache__/

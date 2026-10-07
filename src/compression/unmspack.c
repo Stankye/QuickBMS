@@ -270,6 +270,8 @@ static struct mspack_system lzxSys =
 /*static*/ int appDecompressLZX(byte *CompressedBuffer, int CompressedSize, byte *UncompressedBuffer, int UncompressedSize, int WindowSize, int CompressionPartitionSize)
 {
 	//guard(appDecompressLZX);
+	// The final LZX frame requires a known, non-negative output length.
+	if (UncompressedSize < 0) return -1;
 
 	// setup streams
 	struct appDecompressLZX_file src, dst;
@@ -288,14 +290,14 @@ static struct mspack_system lzxSys =
     if(WindowSize <= 0) WindowSize = 17;
     if(CompressionPartitionSize <= 0) CompressionPartitionSize = 256*1024;
 	struct lzxd_stream *lzxd = lzxd_init(&lzxSys, (void *)&src, (void *)&dst, WindowSize, 0, CompressionPartitionSize, UncompressedSize, 0);
-	//assert(lzxd);
+	if (!lzxd) return -1;
 	// decompress
 	int r = lzxd_decompress(lzxd, UncompressedSize);
-	if (r != MSPACK_ERR_OK)
-		return -1; //appError("lzxd_decompress(%d,%d) returned %d", CompressedSize, UncompressedSize, r);
-    int ret = mem_system.tell((void *)&src);
-	// free resources
+	// free resources on success and failure
 	lzxd_free(lzxd);
+	if (r != MSPACK_ERR_OK) return -1;
+	// Report output bytes, not the number of compressed bytes consumed.
+	int ret = dst.pos;
 
 	//unguard;
     return ret;
